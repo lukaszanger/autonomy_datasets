@@ -441,7 +441,7 @@ ZOD calibrates its sensors against an ISO-8855 reference frame at the center of 
 >
 > **The ego vehicle dimensions are an approximation:** ZOD publishes no dimensions for its collection vehicles, so `EgoData` reports the dimensions of a large passenger estate car, consistent with the released calibration and with the ego-return box of the development kit.
 
-> [!INFO]
+> [!NOTE]
 > For this dataset, Zenseact AB has taken all reasonable measures to remove all personally identifiable information, including faces and license plates. To the extent that you like to request removal of specific images from the dataset, please contact privacy@zenseact.com.
 
 The camera runs at 10.1 Hz and the lidar at 9 Hz, and ZOD ships no synchronization table, so each sample is built from the frames closest in time to the reference sensor, which is the camera because ZOD defines the camera images as its keyframes. Frames without a match within `zod_sync_tolerance_seconds` are skipped, which typically drops the first sample of a sequence. Point clouds are motion-compensated onto the sample's timestamp, so that lidar, camera and annotations describe the same instant.
