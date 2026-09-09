@@ -97,8 +97,6 @@ class RosbagReplayAdapter:
                 rosbag2_py.ConverterOptions(input_serialization_format="", output_serialization_format=""),
             )
 
-            # A rosbag of a single sample has zero duration but is still replayable, so the
-            # message count decides whether a rosbag holds anything to replay.
             if reader.get_metadata().message_count == 0:
                 LOGGER.warn(f"Rosbag '{bag_path}' holds no message, skipping")
                 continue
