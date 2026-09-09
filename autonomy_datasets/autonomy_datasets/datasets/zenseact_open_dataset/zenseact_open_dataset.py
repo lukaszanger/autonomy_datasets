@@ -58,6 +58,10 @@ The sensors are triggered independently (camera at 10.1 Hz, lidar at 9 Hz), so e
 built from the frames closest in time to the reference sensor, which is the camera because ZOD
 defines the camera images as its keyframes. Point clouds are motion-compensated onto the
 sample's timestamp so that lidar, camera and annotations describe the same instant.
+
+ZOD annotates the keyframe of a frame and of a sequence only, so that keyframe's sample is the
+only one to publish the object list topics; the remaining samples of a sequence, and every sample
+of the unannotated drives, are published without them instead of with an empty object list.
 """
 
 import os
@@ -317,7 +321,7 @@ class ZenseactOpenDatasetAdapter(DatasetAdapter):
             track_ids: Dict[str, int] = {}
 
             reference_times = self._reference_times(info, camera_frames, lidar_frames)
-            keyframe_index = _keyframe_index(reference_times, info) if annotations else None
+            keyframe_index = _keyframe_index(reference_times, info) if _is_annotated(info) else None
             for index, timestamp in enumerate(reference_times):
                 scene_id = self._scene_id(info, timestamp, reference_times[0])
                 if scene_id != last_scene_id:
@@ -333,7 +337,8 @@ class ZenseactOpenDatasetAdapter(DatasetAdapter):
                 ):
                     _print_once(
                         "Zenseact Open Dataset samples without data from one or more enabled sensors within "
-                        "'zod_sync_tolerance_seconds' are skipped, as a sample has to hold data for every topic."
+                        "'zod_sync_tolerance_seconds' are skipped, as a sample has to hold the data of every "
+                        "enabled sensor."
                     )
                     continue
 
@@ -357,20 +362,22 @@ class ZenseactOpenDatasetAdapter(DatasetAdapter):
                     assert camera_frame is not None
                     sample["camera_01/image_raw"] = self._image(camera_frame, stamp)
                     sample["camera_01/camera_info"] = self._camera_info(calibration, stamp)
-                # ZOD annotates the keyframe of a scene only; every other sample of a sequence or
-                # drive publishes an empty object list.
-                objects = annotations if index == keyframe_index else []
-                if self.publish_lidar_object_lists:
+                # ZOD annotates the keyframe of a scene only, so every other sample of a sequence,
+                # and every sample of the unannotated drives, is published without the object list
+                # topics rather than with an empty object list. An annotated keyframe that holds no
+                # 3D object does publish an empty one, which states that nothing was annotated.
+                is_keyframe = index == keyframe_index
+                if self.publish_lidar_object_lists and is_keyframe:
                     set_object_list_sample(
                         sample,
                         "object_list/lidar_01",
-                        *_object_list(objects, Lidar.VELODYNE, "lidar_01", calibration, stamp, dataset_scene_id, track_ids),
+                        *_object_list(annotations, Lidar.VELODYNE, "lidar_01", calibration, stamp, dataset_scene_id, track_ids),
                     )
-                if self.publish_camera_01_object_lists:
+                if self.publish_camera_01_object_lists and is_keyframe:
                     set_object_list_sample(
                         sample,
                         "object_list/camera_01",
-                        *_object_list(objects, Camera.FRONT, "camera_01", calibration, stamp, dataset_scene_id, track_ids),
+                        *_object_list(annotations, Camera.FRONT, "camera_01", calibration, stamp, dataset_scene_id, track_ids),
                     )
 
                 sample_index += 1
@@ -551,6 +558,16 @@ def _download(dataset_root: Path, subset: str, version: str, download_url: str) 
         )
 
 
+def _is_annotated(info: Information) -> bool:
+    """Return whether ZOD annotated the objects of a scene's keyframe.
+
+    Frames and sequences carry an object detection annotation of their keyframe, the drives carry
+    none at all. Whether that annotation holds a 3D object is a separate question: an annotated
+    keyframe without one publishes an empty object list, an unannotated sample publishes none.
+    """
+    return AnnotationProject.OBJECT_DETECTION in info.annotations
+
+
 def _read_object_annotations(info: Information) -> List[Any]:
     """Return the 3D object annotations of a scene's keyframe, if it is annotated.
 
@@ -574,7 +591,7 @@ def _keyframe_index(reference_times: Sequence[float], info: Information) -> int:
     """Return the index of the sample that carries the annotations of a scene.
 
     ZOD annotates one keyframe per frame and per sequence, so exactly the sample recorded closest
-    to that keyframe publishes the object lists; every other sample publishes an empty one.
+    to that keyframe publishes the object lists; every other sample is published without them.
     """
     keyframe_time = info.keyframe_time.timestamp()
     return min(range(len(reference_times)), key=lambda index: abs(reference_times[index] - keyframe_time))

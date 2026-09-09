@@ -4,7 +4,7 @@
     dataset: zenseact_open_dataset
     # <subset>_<version>_<split>: subset is frames, sequences or drives,
     # version is mini or full, split is train, val or all
-    dataset_split: sequences_mini_all
+    dataset_split: frames_mini_all
     zod_auto_download: true
     zod_download_url: ""  # personal link from https://zod.zenseact.com, or set ZOD_DOWNLOAD_URL
     zod_anonymization: blur  # blur, dnat (frames only)

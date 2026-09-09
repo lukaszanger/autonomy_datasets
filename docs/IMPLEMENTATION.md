@@ -428,7 +428,8 @@ ZOD calibrates its sensors against an ISO-8855 reference frame at the center of 
 | **Meta Information:** Object Annotations | `/object_list/lidar_01/meta_info`</br>`/object_list/camera_01/meta_info` | `autonomy_datasets_msgs/msg/ObjectListMetaInfo` | Annotations without a representation in `perception_msgs/msg/Object`: `original_class`, `original_subclass`, `annotation_uuid`, `unclear`, and `object_type`, `occlusion_level`, `with_rider`, `emergency`, `artificial` and `traffic_content_visible` wherever ZOD annotates them. Associated with the object list via the header stamp and the object id. |
 | **Transformations** | `/tf`, `/tf_static` | `tf2_msgs/msg/TFMessage` | Static transformations from the ISO-8855 vehicle frame (`base_link`) to the sensor frames, and the dynamic pose of `base_link` in the `map` frame. |
 
-> **Only keyframes are annotated:** ZOD annotates one keyframe per frame and per sequence, so exactly the sample recorded closest to that keyframe publishes the object lists; every other sample of a sequence publishes an empty object list, and the drives are not annotated at all. Set `dataset_split` to a `frames` split to obtain annotated samples only.
+> [!NOTE]
+> **Only keyframes are annotated:** ZOD annotates one keyframe per frame and per sequence, so exactly the sample recorded closest to that keyframe publishes the object lists. Every other sample of a sequence is published without the object list topics rather than with an empty object list, and the drives, which are not annotated at all, publish no object list at any sample. Set `dataset_split` to a `frames` split to obtain annotated samples only.
 >
 > **Every frame is its own rosbag scene:** Frames are independent recordings taken in different countries and months, so consecutive frames are seconds to weeks apart. Each one therefore becomes a scene of its own, rather than being grouped, which would put a rosbag on a timeline that jumps between its samples and break every consumer running on the published `/clock`. Sequences and drives are continuous recordings and are split into scenes of `zod_rosbag_duration_seconds` instead.
 >
@@ -439,6 +440,9 @@ ZOD calibrates its sensors against an ISO-8855 reference frame at the center of 
 > **The remaining annotation projects are not published:** ZOD also ships lane marking and ego road segmentation, a traffic sign taxonomy of 156 classes, and road condition labels. These have no representation in `perception_msgs` and are not converted. Radar, which later ZOD releases add for sequences and drives, is not converted either.
 >
 > **The ego vehicle dimensions are an approximation:** ZOD publishes no dimensions for its collection vehicles, so `EgoData` reports the dimensions of a large passenger estate car, consistent with the released calibration and with the ego-return box of the development kit.
+
+> [!INFO]
+> For this dataset, Zenseact AB has taken all reasonable measures to remove all personally identifiable information, including faces and license plates. To the extent that you like to request removal of specific images from the dataset, please contact privacy@zenseact.com.
 
 The camera runs at 10.1 Hz and the lidar at 9 Hz, and ZOD ships no synchronization table, so each sample is built from the frames closest in time to the reference sensor, which is the camera because ZOD defines the camera images as its keyframes. Frames without a match within `zod_sync_tolerance_seconds` are skipped, which typically drops the first sample of a sequence. Point clouds are motion-compensated onto the sample's timestamp, so that lidar, camera and annotations describe the same instant.
 

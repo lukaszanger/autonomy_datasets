@@ -1188,6 +1188,8 @@ class AutonomyDatasets(Node):
                     # publish sample data
                     for topic, publisher in self.data_publishers.items():
                         assert publisher is not None
+                        if topic not in sample:
+                            continue
                         msg = sample[topic]
                         if self.publish_samples and publish_sample:
                             publisher.publish(msg)
